@@ -10,7 +10,7 @@ def run(project_id, repo_path, cursor, **options):
     record = cursor.fetchone()
     full_url = record[0]
     git_tokens = options['tokens']
-    token_avail = 0
+    token_avail = False
     for user_name in git_tokens:
         if(token_avail == True):
             break

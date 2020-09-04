@@ -36,6 +36,7 @@ def run(project_id, repo_path, cursor, **options):
                     elif fi.endswith(".gradle"):
                         Files.append(files)
                         AbsFiles.append(os.path.join(root,fi))
+            print('AbsFiles: ',AbsFiles)
             for filename in AbsFiles:
                 stream = inner_os.popen('git log '+ filename +'').read().split("\n")
                 commit_id = []

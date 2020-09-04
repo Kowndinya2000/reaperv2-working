@@ -75,7 +75,7 @@ class Attributes(object):
         self.database = database
         self.today = goptions.get('today', str(datetime.today().date()))
         self.cleanup = cleanup
-
+        self.tokens = goptions['tokens']
         self._parse_attributes(attributes, **goptions)
         self._parse_keystring(keystring)
 
@@ -215,34 +215,43 @@ class Attributes(object):
         else:
             cursor = ghtorrentDb.cursor()
             cursor.execute("SELECT url FROM projects WHERE id={0}".format(project_id))
-            url = cursor.fetchone()[0].replace("https://api.github.com/repos/","").split("/")
+            url = self.database.get(
+                '''
+                    SELECT url FROM projects WHERE id={0}
+                '''.format(project_id)
+            ).replace("https://api.github.com/repos/","").split("/")
             (repo_owner, repo_name) = (url[0],url[1])
-            # self.database.get(
-            #     '''
-            #         SELECT u.login, p.name
-            #         FROM projects p
-            #             JOIN users u ON u.id = p.owner_id
-            #         WHERE p.id = {0}
-            #     '''.format(project_id)
-            # )
             if not (repo_owner or repo_name):
                 raise ValueError('Invalid project ID {0}.'.format(project_id))
-            
-            last_commit_date = getLastCommitDate(project_id)
-            # last_commit_date = self.database.get(
-            #     '''
-            #         SELECT DATE(c.created_at)
-            #         FROM project_commits pc
-            #             JOIN commits c ON c.id = pc.commit_id
-            #         WHERE pc.project_id = {0}
-            #         ORDER BY c.created_at DESC
-            #         LIMIT 1
-            #     '''.format(project_id)
-            # )
-
+            get_url = self.database.get(
+                '''
+                    SELECT url FROM projects WHERE id={0}
+                '''.format(project_id)
+            ) + "/commits"
+            try:
+                print(self.tokens)
+            except:
+                print('')
+            token_avail = False
+            for uname in self.tokens:
+                if(token_avail == True):
+                    break 
+                else:
+                    try:
+                        last_commit_date = requests.get(get_url,auth=(uname,self.tokens[uname])).json()[0]["commit"]["committer"]["date"].split("T")[0]
+                        token_avail = True
+                    except:
+                        continue
+            if(token_avail == False):
+                try:
+                    print("[Reg: Last_Commit_Date]Couldn't fetch data from API! Trying out without token..")
+                    last_commit_date = requests.get(get_url).json()[0]["commit"]["committer"]["date"].split("T")[0]
+                    print('Fetch Successful')
+                except:
+                    print('Failed to fetch last commit date')
+                    last_commit_date = None
             if last_commit_date is None:
                 last_commit_date = self.today
-
             repository_path = utilities.clone(
                 repo_owner, repo_name, repository_path, last_commit_date
             )
